@@ -26,7 +26,6 @@ def main():
     
     move_made = False
     game_over = False
-    undone = False
     running = True
     while running:
         for e in p.event.get():
@@ -73,6 +72,16 @@ def main():
         if move_made:
             move_made = False
         draw_current_board(screen,game_state,squares_selected)
+        
+        if game_state.board.is_checkmate():
+            game_over = True
+            if game_state.board.turn:   
+                drawText(screen,"Black Wins by Checkmate!")
+            else: 
+                drawText(screen,"White Wins by Checkmate!")
+        elif game_state.board.is_stalemate():
+            game_over = True
+            drawText(screen,"Stalemate")
         clock.tick(fps)
         p.display.flip()
         
@@ -134,6 +143,13 @@ def draw_empty_board(screen):
             color = colors[((r+c) % 2)]
             p.draw.rect(screen,color,p.Rect(c*square_size,r*square_size,square_size,square_size))
 
+def drawText(screen,text):
+    font = p.font.SysFont("helvitca",64,True,False)
+    textObject = font.render(text,0,p.Color("black"))
+    textLocation = p.Rect(0,0,board_width,board_height).move(board_width/2 - textObject.get_width()/2,board_height/2 - textObject.get_height()/2)
+    screen.blit(textObject,textLocation)
+    textObject = font.render(text,0,p.Color("black"))
+    screen.blit(textObject,textLocation.move(2,2))
 
 if __name__ == "__main__":
     main()
