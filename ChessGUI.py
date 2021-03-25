@@ -7,10 +7,108 @@ board_dimension = 8
 square_size = board_height // board_dimension
 fps = 15
 images = {}
+piece_dict = {"Q" : ChessEngine.chess.QUEEN,
+              "R" : ChessEngine.chess.ROOK,
+              "B" : ChessEngine.chess.BISHOP,
+              "N" : ChessEngine.chess.KNIGHT}
 
 def main():
     choice = input("Would you like to play with the white pieces or the black pieces? (W/B) : ")
-    HumanVsHuman(choice.upper() =="W")
+    #HumanVsHuman(choice.upper() =="W")
+    HumanVsEngine(choice.upper() =="W")
+    
+def HumanVsEngine(play_with_white:bool):
+    p.init()
+    screen = p.display.set_mode((board_width,board_height))
+    clock = p.time.Clock()
+    screen.fill(p.Color("white"))
+    game_state = ChessEngine.GameState(True)
+    load_lichess_images()
+    squares_selected = ()
+    last_two_player_clicks = []
+        
+    move_made = False
+    game_over = False
+    running = True
+    human_to_move = True if play_with_white else False
+    while running:
+        if human_to_move:
+            for e in p.event.get():
+                if e.type == p.QUIT:
+                     p.display.quit()
+                     running = False
+                     sys.exit()
+                elif e.type == p.MOUSEBUTTONDOWN:
+                    if not game_over:
+                        location = p.mouse.get_pos()
+                        col = location[0] // square_size
+                        row = location[1] // square_size
+                        if squares_selected == (row,col):
+                            squares_selected = ()
+                            last_two_player_clicks = []   
+                        else:
+                            squares_selected = (row,col)
+                            last_two_player_clicks.append(squares_selected)
+                        if len(last_two_player_clicks) == 2: #After second click
+                            start_square =  convert_square(last_two_player_clicks[0],play_with_white)
+                            end_square = convert_square(last_two_player_clicks[1],play_with_white)
+                            promote_to = None
+                            if game_state.board.piece_type_at(start_square) == ChessEngine.chess.PAWN:
+                                if (ChessEngine.chess.square_rank(end_square) == 7 or 
+                                    ChessEngine.chess.square_rank(end_square) == 0):
+                                    promote_to = ChessEngine.chess.QUEEN
+                            move = ChessEngine.chess.Move(start_square,end_square,promotion=promote_to)
+                            if move in game_state.board.legal_moves:
+                                if promote_to != None :
+                                    promote_piece = input("What would you like to promote to? (Q,R,B,N) : ")
+                                    try:
+                                        promote_to = piece_dict[promote_piece.upper()]
+                                    except:
+                                        promote_piece = input("Oops! Please try again. What would you like to promote to? (Q,R,B,N) : ")
+                                    move = ChessEngine.chess.Move(start_square,end_square,promotion=promote_to)
+                                game_state.board.push(move)
+                                human_to_move = False
+                                move_made = True
+                                squares_selected = ()
+                                last_two_player_clicks = []
+                            if not move_made:
+                                last_two_player_clicks = [squares_selected]   
+                elif e.type ==  p.KEYDOWN and game_state.board.move_stack:
+                    if e.key == p.K_z: # Undo when z is pressed
+                        game_state.board.pop()
+                        move_made = True
+                    if e.key == p.K_r:
+                        game_state.board.reset()
+                        squares_selected = ()
+                        last_two_player_clicks = []
+                        move_made = False
+                        game_over = False
+        else:
+            if not game_over:
+                move = game_state.make_move()
+                game_state.board.push(move)
+                move_made = True
+                human_to_move = True
+                
+        if move_made:
+            move_made = False
+        draw_current_board(screen,game_state,squares_selected,play_with_white)
+        if game_state.board.is_checkmate():
+            game_over = True
+            if game_state.board.turn:   
+                drawText(screen,"Black Wins by Checkmate!")
+            else: 
+                drawText(screen,"White Wins by Checkmate!")
+        elif game_state.board.is_stalemate():
+            game_over = True
+            drawText(screen,"Stalemate")
+        clock.tick(fps)
+        p.display.flip()     
+
+
+
+
+
 def HumanVsHuman(play_with_white: bool):
     p.init()
     screen = p.display.set_mode((board_width,board_height))
@@ -44,8 +142,20 @@ def HumanVsHuman(play_with_white: bool):
                     if len(last_two_player_clicks) == 2: #After second click
                         start_square =  convert_square(last_two_player_clicks[0],play_with_white)
                         end_square = convert_square(last_two_player_clicks[1],play_with_white)
-                        move = ChessEngine.chess.Move(start_square,end_square)
+                        promote_to = None
+                        if game_state.board.piece_type_at(start_square) == ChessEngine.chess.PAWN:
+                            if (ChessEngine.chess.square_rank(end_square) == 7 or 
+                                ChessEngine.chess.square_rank(end_square) == 0):
+                                promote_to = ChessEngine.chess.QUEEN
+                        move = ChessEngine.chess.Move(start_square,end_square,promotion=promote_to)
                         if move in game_state.board.legal_moves:
+                            if promote_to != None :
+                                promote_piece = input("What would you like to promote to? (Q,R,B,N) : ")
+                                try:
+                                    promote_to = piece_dict[promote_piece.upper()]
+                                except:
+                                    promote_piece = input("Oops! Please try again. What would you like to promote to? (Q,R,B,N) : ")
+                                move = ChessEngine.chess.Move(start_square,end_square,promotion=promote_to)
                             game_state.board.push(move)
                             move_made = True
                             squares_selected = ()
@@ -110,7 +220,12 @@ def highlight_squares(screen,game_state,squares_selected,play_with_white):
             s.fill(p.Color("yellow"))
             
             for end_square in range(63):
-                move = ChessEngine.chess.Move(start_square,end_square)
+                promote_to = None
+                if game_state.board.piece_type_at(start_square) == ChessEngine.chess.PAWN:
+                    if (ChessEngine.chess.square_rank(end_square) == 7 or 
+                        ChessEngine.chess.square_rank(end_square) == 0):
+                        promote_to = ChessEngine.chess.QUEEN
+                move = ChessEngine.chess.Move(start_square,end_square,promotion=promote_to)
                 if move in game_state.board.legal_moves:
                     square = move.to_square
                     c = square % board_dimension
