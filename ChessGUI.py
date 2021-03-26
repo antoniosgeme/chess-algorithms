@@ -76,13 +76,16 @@ def HumanVsEngine(play_with_white:bool):
                 elif e.type ==  p.KEYDOWN and game_state.board.move_stack:
                     if e.key == p.K_z: # Undo when z is pressed
                         game_state.board.pop()
+                        game_state.board.pop()
                         move_made = True
+                        human_to_move = True
                     if e.key == p.K_r:
                         game_state.board.reset()
                         squares_selected = ()
                         last_two_player_clicks = []
                         move_made = False
                         game_over = False
+                        human_to_move = True if play_with_white else False
         else:
             if not game_over:
                 move = game_state.make_move()
